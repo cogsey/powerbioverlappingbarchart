@@ -1,0 +1,28 @@
+{
+    "visual": {
+        "name": "barChart",
+        "displayName": "Overlapping Bar Chart",
+        "guid": "barChartE8732569753A41D083926C75A5E14DB1",
+        "visualClassName": "Barchart",
+        "version": "1.0.0",
+        "description": "Overlapping bar chart",
+        "supportUrl": "https://github.com/cogsey/powerbioverlappingbarchart",
+        "gitHubUrl": "https://github.com/cogsey/powerbioverlappingbarchart"
+    },
+    "apiVersion": "2.6.0",
+    "author": {
+        "name": "Steve Cogswell",
+        "email": "cogswellsd@hotmail.com"
+    },
+    "assets": {
+        "icon": "assets/icon.png"
+    },
+    "externalJS": [
+        null
+        
+    ],
+    "style": "style/visual.less",
+    "capabilities": "capabilities.json",
+    "dependencies": null,
+    "stringResources": []
+}
