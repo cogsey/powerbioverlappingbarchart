@@ -53,6 +53,8 @@ export interface BarchartDataPoint{
     category: string;
     backBar: number;
     frontBar: number;
+    backSelectionId:ISelectionId;
+    frontSelectionId: ISelectionId;
 }
 
 export interface BarchartViewModel{
@@ -123,8 +125,8 @@ export class Barchart implements IVisual {
     private static margin = {
         top:20,
         right: 20,
-        bottom: 30,
-        left: 50,
+        bottom: 20,
+        left: 0,
     };
 
     //for legend
@@ -212,7 +214,7 @@ export class Barchart implements IVisual {
         
         /**assigning variables */
         var dataView: DataView = options.dataViews[0]
-        var viewModel: BarchartViewModel = this.createViewModel(options.dataViews[0], options.viewport.height);
+        var viewModel: BarchartViewModel = this.createViewModel(options.dataViews[0], options.viewport.height,this.host);
         var dataPoints = viewModel.DataPoints
 
         if (viewModel.IsNotValid) {
@@ -226,18 +228,14 @@ export class Barchart implements IVisual {
             {
                 label: <string>dataView.categorical.values[0].source.displayName,
                 color: <string>viewModel.BackBarColor,
-                identity: this.host.createSelectionIdBuilder()
-                    .withMeasure("Front Bar")
-                    .createSelectionId(),
+                identity:viewModel.DataPoints[0].frontSelectionId,
                 selected: false,
                 markerShape: MarkerShape.square
             },
             {
                 label: <string>dataView.categorical.values[1].source.displayName,
                 color: <string>viewModel.FrontBarColor,
-                identity: this.host.createSelectionIdBuilder()
-                    .withMeasure("Back Bar")
-                    .createSelectionId(),
+                identity: viewModel.DataPoints[0].backSelectionId,
                 selected: false,
                 markerShape: MarkerShape.square
             },
@@ -251,6 +249,24 @@ export class Barchart implements IVisual {
             },
             options.viewport
         );
+
+        //handle context menu. only allows drill through for Front Bar
+
+        this.svg.on('contextmenu', () => {
+
+            const mouseEvent: MouseEvent = d3.event as MouseEvent;
+            
+            let dataPoint = d3.select(d3.event.target).datum();
+            this.selectionManager.showContextMenu(
+                dataPoint ? dataPoint["frontSelectionId"] : {}, 
+                {
+                    x: mouseEvent.clientX,
+                    y: mouseEvent.clientY
+                }
+            );
+            mouseEvent.preventDefault();
+        }); 
+
 
         /**set height and width of root SVG element using viewport passed by Power BI host*/
         this.svg.attr("height",options.viewport.height);
@@ -519,7 +535,6 @@ export class Barchart implements IVisual {
         /**Initial assignement of BACK label TEXT variables */
 
             /**calculating font size for BACK label so it is not taller than the bar */
-            console.log("Show Label:",viewModel.ShowLabel)
             var m = 0
             var backLabelfontSize = viewModel.LabelFontSize
             do {
@@ -758,9 +773,6 @@ export class Barchart implements IVisual {
             var frontLabelRectFill = viewModel.LabelBackgroundColor
             var frontLabelRectOpacity = 1 - viewModel.LabelTransparency
 
-            console.log("frontLabelRectFill: ", frontLabelRectFill)
-            console.log("frontLabelRectOpacity: ", frontLabelRectOpacity)
-
             /**
              * checking if adjustments need to be made to label variables 
             */
@@ -916,7 +928,7 @@ export class Barchart implements IVisual {
 
     }
 
-    public createViewModel(dataView: DataView, viewportHieght): BarchartViewModel{
+    public createViewModel(dataView: DataView, viewportHieght, host: IVisualHost): BarchartViewModel{
 
         //handle case where categorical DataView is not valid
         if(typeof dataView === "undefined" ||
@@ -931,6 +943,7 @@ export class Barchart implements IVisual {
 
         var categoricalDataView: DataViewCategorical = dataView.categorical;
         var categoryColumn: DataViewCategoricalColumn = categoricalDataView.categories[0];
+        let category = categoricalDataView.categories[0];
         var categoryNames: PrimitiveValue[] = categoricalDataView.categories[0].values;
         var categoryValues: PrimitiveValue[] = categoricalDataView.values[0].values;
 
@@ -990,10 +1003,24 @@ export class Barchart implements IVisual {
                 let plotHeight = viewportHieght - (Barchart.margin.top + Barchart.margin.bottom * (xAxisFontSize / 10)+10)
 
                 let bandwidth = plotHeight/3
+                let backSelectionId: ISelectionId = host.createSelectionIdBuilder()
+                    .withCategory(category, ci)
+                    .withMeasure(categoricalDataView.values[0].source.queryName)
+                    .withSeries(dataView.categorical.values, dataView.categorical.values[ci])
+                    .createSelectionId();
+                
+                let frontSelectionId: ISelectionId = host.createSelectionIdBuilder()
+                    .withCategory(category, ci)
+                    .withMeasure(categoricalDataView.values[1].source.queryName)
+                    .withSeries(dataView.categorical.values, dataView.categorical.values[ci])
+                    .createSelectionId();
+
                 BarchartDataPoints.push({
                     category: <string>textMeasurementService.getTailoredTextOrDefault(textProperties, bandwidth),
                     backBar: <number>categoricalDataView.values[0].values[ci],
                     frontBar: <number>categoricalDataView.values[1].values[ci],
+                    backSelectionId: backSelectionId,
+                    frontSelectionId: frontSelectionId
                 });
             });
 
